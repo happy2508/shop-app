@@ -21,6 +21,9 @@ class CartItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Dismissible(
       key: ValueKey(id),
+      onDismissed: (direction) {
+        Provider.of<Cart>(context, listen: false).removeItem(productId);
+      },
       background: Container(
         color: Theme.of(context).errorColor,
         child: Icon(
@@ -36,9 +39,6 @@ class CartItem extends StatelessWidget {
         ),
       ),
       direction: DismissDirection.endToStart,
-      onDismissed: (direction) {
-        Provider.of<Cart>(context, listen: false).removeItem(productId);
-      },
       child: Card(
         margin: EdgeInsets.symmetric(
           horizontal: 15,
