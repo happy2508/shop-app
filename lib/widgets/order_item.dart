@@ -38,9 +38,9 @@ class _OrderItemState extends State<OrderItem> {
           ),
           if (_expanded)
             Container(
-              height: min(widget.order.products.length * 20 + 100, 180),
+              height: min(widget.order.products.length * 20 + 10, 100),
               child: ListView(
-                  children: widget.order.products.length
+                  children: widget.order.products
                       .map((prod) => Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
