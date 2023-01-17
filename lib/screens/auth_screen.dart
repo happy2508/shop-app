@@ -1,6 +1,9 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:shopappp/models/http_exception.dart';
+import 'package:shopappp/providers/auth.dart';
 
 enum AuthMode { Signup, Login }
 
@@ -59,7 +62,11 @@ class AuthScreen extends StatelessWidget {
                       child: Text(
                         'MyShop',
                         style: TextStyle(
-                          color: Theme.of(context).accentTextTheme.title.color,
+                          // ignore: deprecated_member_use
+                          color: Theme.of(context)
+                              .accentTextTheme
+                              .headline6
+                              ?.color,
                           fontSize: 50,
                           fontFamily: 'Anton',
                           fontWeight: FontWeight.normal,
@@ -83,7 +90,7 @@ class AuthScreen extends StatelessWidget {
 
 class AuthCard extends StatefulWidget {
   const AuthCard({
-    Key key,
+    Key? key,
   }) : super(key: key);
 
   @override
@@ -100,20 +107,66 @@ class _AuthCardState extends State<AuthCard> {
   var _isLoading = false;
   final _passwordController = TextEditingController();
 
-  void _submit() {
-    if (!_formKey.currentState.validate()) {
+  void _showErrorDailog(String message) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('An Error Occured'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+            },
+            child: Text('Okay'),
+          )
+        ],
+      ),
+    );
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) {
       // Invalid!
       return;
     }
-    _formKey.currentState.save();
+    _formKey.currentState?.save();
     setState(() {
       _isLoading = true;
     });
-    if (_authMode == AuthMode.Login) {
-      // Log user in
-    } else {
-      // Sign user up
+
+    try {
+      if (_authMode == AuthMode.Login) {
+        await Provider.of<Auth>(context, listen: false).login(
+          _authData['email']!,
+          _authData['password']!,
+        );
+      } else {
+        await Provider.of<Auth>(context, listen: false).signup(
+          _authData['email']!,
+          _authData['password']!,
+        );
+      }
+    } on HttpException catch (error) {
+      var errorMessage = 'Authentication failed';
+      if (error.toString().contains('EMAIL_EXISTS')) {
+        errorMessage = 'this email is already in use.';
+      } else if (error.toString().contains('INVALID_EMAIL')) {
+        errorMessage = 'this is not a valid email address';
+      } else if (error.toString().contains('WEAK_PASSWORD')) {
+        errorMessage = 'this password is to weak';
+      } else if (error.toString().contains('EMAIL_NOT_FOUND')) {
+        errorMessage = 'Could not find user with that email';
+      } else if (error.toString().contains('INVALID_PASSWORD')) {
+        errorMessage = ' Invalid password';
+      }
+      _showErrorDailog(errorMessage);
+    } catch (error) {
+      const errorMessage =
+          'Could not authenticate you . Please  try  again later.';
+      _showErrorDailog(errorMessage);
     }
+
     setState(() {
       _isLoading = false;
     });
@@ -154,14 +207,14 @@ class _AuthCardState extends State<AuthCard> {
                   decoration: InputDecoration(labelText: 'E-Mail'),
                   keyboardType: TextInputType.emailAddress,
                   validator: (value) {
-                    if (value.isEmpty || !value.contains('@')) {
+                    if (value!.isEmpty || !value.contains('@')) {
                       return 'Invalid email!';
                     }
                     return null;
                     return null;
                   },
                   onSaved: (value) {
-                    _authData['email'] = value;
+                    _authData['email'] = value!;
                   },
                 ),
                 TextFormField(
@@ -169,12 +222,12 @@ class _AuthCardState extends State<AuthCard> {
                   obscureText: true,
                   controller: _passwordController,
                   validator: (value) {
-                    if (value.isEmpty || value.length < 5) {
+                    if (value!.isEmpty || value.length < 5) {
                       return 'Password is too short!';
                     }
                   },
                   onSaved: (value) {
-                    _authData['password'] = value;
+                    _authData['password'] = value!;
                   },
                 ),
                 if (_authMode == AuthMode.Signup)
@@ -196,25 +249,40 @@ class _AuthCardState extends State<AuthCard> {
                 if (_isLoading)
                   CircularProgressIndicator()
                 else
-                  RaisedButton(
-                    child:
-                        Text(_authMode == AuthMode.Login ? 'LOGIN' : 'SIGN UP'),
-                    onPressed: _submit,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
+                  Padding(
                     padding:
-                        EdgeInsets.symmetric(horizontal: 30.0, vertical: 8.0),
-                    color: Theme.of(context).primaryColor,
-                    textColor: Theme.of(context).primaryTextTheme.button.color,
+                        EdgeInsets.symmetric(horizontal: 30.0, vertical: 4.0),
+                    child: ElevatedButton(
+                      child: Text(
+                        _authMode == AuthMode.Login ? 'LOGIN' : 'SIGN UP',
+                        style: TextStyle(
+                          color:
+                              Theme.of(context).primaryTextTheme.button?.color,
+                        ),
+                      ),
+                      onPressed: _submit,
+                      style: ButtonStyle(
+                        backgroundColor: MaterialStateProperty.all(
+                          Theme.of(context).primaryColor,
+                        ),
+                        shape:
+                            MaterialStateProperty.all<RoundedRectangleBorder>(
+                          RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18.0),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                FlatButton(
+                TextButton(
+                  // ignore: sort_child_properties_last
                   child: Text(
                       '${_authMode == AuthMode.Login ? 'SIGNUP' : 'LOGIN'} INSTEAD'),
                   onPressed: _switchAuthMode,
-                  padding: EdgeInsets.symmetric(horizontal: 30.0, vertical: 4),
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  textColor: Theme.of(context).primaryColor,
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 30.0, vertical: 4),
+                  ),
                 ),
               ],
             ),
